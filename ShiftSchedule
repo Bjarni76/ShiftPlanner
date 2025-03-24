@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Monthly Shift Planner – Calendar</title>
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <!-- ExcelJS for export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+  <style>
+    :root {
+      --primary-color: #4285f4;
+      --primary-hover: #357ae8;
+      --background: #f8f8f8;
+      --container-bg: #ffffff;
+      --border-color: #aaa;
+      --header-bg: #eaeaea;
+      --font-color: #333;
+      --info-bg: #fffae6;
+      --info-border: #ffd700;
+    }
+    body {
+      font-family: 'Roboto', sans-serif;
+      margin: 20px;
+      background-color: var(--background);
+      color: var(--font-color);
+    }
+    h2, h3 {
+      text-align: center;
+      margin: 0.5em 0;
+    }
+    .container {
+      background: var(--container-bg);
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 30px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+      max-width: 1200px;
+      margin: 0 auto 30px auto;
+    }
+    .info {
+      background-color: var(--info-bg);
+      border: 2px solid var(--info-border);
+      border-radius: 6px;
+      padding: 10px 15px;
+      font-size: 1em;
+      margin-bottom: 20px;
+    }
+    .info p {
+      margin: 0;
+      text-align: center;
+      font-weight: bold;
+    }
+    #calendarHeader {
+      font-size: 1.2em;
+      font-weight: bold;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    .selector {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .selector select {
+      padding: 6px 10px;
+      font-size: 1em;
+    }
+    #calendarTable {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 0.9em;
+      margin-bottom: 20px;
+    }
+    #calendarTable th, #calendarTable td {
+      border: 2px solid var(--border-color);
+      padding: 8px;
+      vertical-align: top;
+      width: 14.28%;
+      height: 110px;
+      border-radius: 4px;
+      background: #fff;
+      position: relative;
+    }
+    #calendarTable th {
+      background-color: var(--header-bg);
+      text-align: center;
+    }
+    #calendarTable td:hover {
+      background-color: #f1faff;
+    }
+    .calendarDay {
+      font-size: 1.8em;
+      font-weight: bold;
+      position: absolute;
+      top: 2px;
+      right: 4px;
+    }
+    .shiftLine {
+      margin-top: 30px;
+      display: flex;
+      align-items: center;
+      font-size: 0.85em;
+    }
+    .shiftLabel {
+      display: inline-block;
+      width: 70px;
+      text-align: right;
+      margin-right: 5px;
+      font-weight: bold;
+    }
+    .personSelect {
+      font-weight: bold;
+      padding: 3px 6px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      transition: background-color 0.3s;
+      font-size: 0.85em;
+    }
+    .commentContainer {
+      margin-top: 4px;
+    }
+    .commentInput {
+      font-size: 0.8em;
+      width: 100%;
+      padding: 4px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      resize: none;
+      overflow: hidden;
+      white-space: pre-wrap;
+    }
+    /* Summary Table */
+    #summaryTable {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 10px;
+      font-size: 0.95em;
+    }
+    #summaryTable th, #summaryTable td {
+      border: 1px solid var(--border-color);
+      padding: 10px;
+      text-align: center;
+      vertical-align: middle;
+    }
+    #summaryTable th {
+      background-color: var(--header-bg);
+    }
+    #summaryTable td:first-child {
+      font-weight: bold;
+    }
+    #summaryTable th.hoursCol {
+      background-color: var(--header-bg);
+    }
+    #bottomButtons {
+      text-align: center;
+      margin-top: 40px;
+    }
+    #bottomButtons button {
+      padding: 10px 20px;
+      font-size: 16px;
+      margin: 5px;
+      border: none;
+      background-color: var(--primary-color);
+      color: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s, transform 0.2s;
+    }
+    #bottomButtons button:hover {
+      background-color: var(--primary-hover);
+      transform: translateY(-2px);
+    }
+    @media print {
+      .no-print {
+        display: none !important;
+      }
+      select {
+        border: none !important;
+        appearance: none !important;
+      }
+      .commentContainer:empty,
+      .commentContainer.empty {
+        display: none;
+      }
+      #summaryContainer {
+        page-break-before: always;
+      }
+      @page {
+        margin: 20mm;
+      }
+      body {
+        -webkit-print-color-adjust: exact;
+        color-adjust: exact;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Time Period Selection -->
+  <div class="container no-print selector">
+    <h2>Set Time Period for Shift Schedule</h2>
+    <select id="timePeriodSelect" onchange="updateTimePeriod()">
+      <option value="">-- Select Time Period --</option>
+      <option value="1">Jan-Feb</option>
+      <option value="2">Feb-Mar</option>
+      <option value="3">Mar-Apr</option>
+      <option value="4">Apr-May</option>
+      <option value="5">May-Jun</option>
+      <option value="6">Jun-Jul</option>
+      <option value="7">Jul-Aug</option>
+      <option value="8">Aug-Sep</option>
+      <option value="9">Sep-Oct</option>
+      <option value="10">Oct-Nov</option>
+      <option value="11">Nov-Dec</option>
+      <option value="12">Dec-Jan</option>
+    </select>
+  </div>
+
+  <!-- Availability Section -->
+  <div class="container no-print" id="availabilityConstraints">
+    <h2>Select Employer’s Availability</h2>
+    <p>For each person, mark "Unavailable Entire Period" or add specific dates/weeks off.</p>
+  </div>
+
+  <div class="container no-print">
+    <button onclick="generateSchedule()">Generate Schedule</button>
+  </div>
+
+  <!-- Info Box for Shift Timings -->
+  <div class="container info">
+    <p><strong>Shift Timings:</strong> Day = 09:00–16:00 | Evening = 16:00–22:00 | Night = 22:00–09:00</p>
+  </div>
+
+  <!-- Calendar Table -->
+  <div id="calendarContainer" class="container">
+    <div id="calendarHeader">Shift Schedule</div>
+    <table id="calendarTable">
+      <thead>
+        <tr>
+          <th>Monday</th>
+          <th>Tuesday</th>
+          <th>Wednesday</th>
+          <th>Thursday</th>
+          <th>Friday</th>
+          <th>Saturday</th>
+          <th>Sunday</th>
+        </tr>
+      </thead>
+      <tbody id="calendarBody">
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Summary Table -->
+  <div class="container" id="summaryContainer">
+    <h2>Monthly Shift Summary</h2>
+    <table id="summaryTable">
+      <thead>
+        <tr>
+          <th>Team Member</th>
+          <th>Total Shifts</th>
+          <th>Night Shifts</th>
+          <th>Day Shifts</th>
+          <th>Evening Shifts</th>
+          <th>Weekend Shifts</th>
+          <th class="hoursCol">Total Hours</th>
+          <th>Work %</th>
+          <th>Target Work</th>
+        </tr>
+      </thead>
+      <tbody id="summaryBody">
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Bottom Buttons -->
+  <div class="container no-print" id="bottomButtons">
+    <button onclick="window.print()">Print Schedule</button>
+    <button onclick="exportToExcel()">Export to Excel (.xlsx)</button>
+    <button onclick="updateSummaryFromCalendar()">Update Summary</button>
+  </div>
+
+  <script>
+    // SHIFT LABELS and HOURS
+    const SHIFT_LABELS = ["Day", "Evening", "Night"];
+    const SHIFT_HOURS = [7, 6, 11];
+    // Full work hours (109 hours = 70%)
+    const FULL_WORK_HOURS = 109 / 0.7;  // ~155.7 hours
+
+    // TEAM MEMBERS and Colors
+    const persons = ["Guðrún", "Lillibeth", "Jóna", "Lena", "Lucybell", "Sangeet", "Sonija", "Jóhanna"];
+    const personColors = {
+      "Guðrún": "#FADBD8",
+      "Lillibeth": "#AED6F1",
+      "Jóna": "#F9E79F",
+      "Lena": "#A9DFBF",
+      "Lucybell": "#D7BDE2",
+      "Sangeet": "#F5CBA7",
+      "Sonija": "#F5B7B1",
+      "Jóhanna": "#F9E79F"
+    };
+    // Target work information (for display) and numeric target hours (for scheduling) 
+    const targetWork = {
+      "Guðrún": "70% (109 Hours)",
+      "Lillibeth": "70% (109 Hours)",
+      "Jóna": "40% (62 Hours)",
+      "Lena": "40% (62 Hours)",
+      "Lucybell": "35-40%",
+      "Sangeet": "6 Nightshifts",
+      "Sonija": "One night a week + Every other weekend",
+      "Jóhanna": "100% (night shifts only)"
+    };
+    const targetHours = {
+      "Guðrún": 109,
+      "Lillibeth": 109,
+      "Jóna": 62,
+      "Lena": 62
+      // For Lucybell, Sangeet, Sonija, and Jóhanna, we leave the target undefined so other eligibility rules apply.
+    };
+    const monthNames = ["Januar","Februar","Mars","April","Mai","Juni","Juli","August","September","Oktober","November","Desember"];
+
+    // GLOBAL VARIABLES
+    let globalMonthDays = [];
+    let globalSchedule = {};
+    let availabilityConstraints = {};
+    let personStats = {};
+    let sonijaWeekdayAssignments = {};
+    let sonijaWeekendAssignments = {};
+
+    const STORAGE_KEY = "shiftPlannerData";
+
+    function saveData() {
+      const data = {
+        timePeriod: document.getElementById("timePeriodSelect").value,
+        globalMonthDays: globalMonthDays,
+        globalSchedule: globalSchedule,
+        personStats: personStats,
+        availabilityHTML: document.getElementById("availabilityConstraints").innerHTML,
+        calendarHeader: document.getElementById("calendarHeader").textContent
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
+    function loadData() {
+      const dataStr = localStorage.getItem(STORAGE_KEY);
+      if (dataStr) {
+        const data = JSON.parse(dataStr);
+        document.getElementById("timePeriodSelect").value = data.timePeriod || "";
+        globalMonthDays = data.globalMonthDays || [];
+        globalSchedule = data.globalSchedule || {};
+        personStats = data.personStats || {};
+        if (data.availabilityHTML) {
+          document.getElementById("availabilityConstraints").innerHTML = data.availabilityHTML;
+        }
+        if (data.calendarHeader) {
+          document.getElementById("calendarHeader").textContent = data.calendarHeader;
+        }
+        if (globalSchedule && Object.keys(globalSchedule).length > 0) {
+          displayCalendar();
+          updateSummary();
+        }
+      }
+    }
+
+    window.addEventListener("load", loadData);
+
+    function resetPersonStats() {
+      persons.forEach(p => {
+        personStats[p] = { total: 0, day: 0, evening: 0, night: 0, weekend: 0, hours: 0 };
+      });
+      sonijaWeekdayAssignments = {};
+      sonijaWeekendAssignments = {};
+    }
+
+    function getWeekNumber(d) {
+      let oneJan = new Date(d.getFullYear(), 0, 1);
+      let millisecsInDay = 86400000;
+      return Math.ceil((((d - oneJan) / millisecsInDay) + oneJan.getDay() + 1) / 7);
+    }
+
+    function getWeekendKey(d) {
+      let dt = new Date(d);
+      if (d.getDay() === 0) {
+        dt.setDate(dt.getDate() - 1);
+      }
+      return dt.toISOString().slice(0,10);
+    }
+
+    function updateTimePeriod() {
+      const val = document.getElementById("timePeriodSelect").value;
+      if (!val) return;
+      const startMonth = parseInt(val, 10);
+      const currentYear = new Date().getFullYear();
+      const periodStart = new Date(currentYear, startMonth - 1, 21);
+      const periodEnd = (startMonth === 12)
+                        ? new Date(currentYear + 1, 0, 20)
+                        : new Date(currentYear, startMonth, 20);
+      globalMonthDays = [];
+      for (let d = new Date(periodStart); d <= periodEnd; d.setDate(d.getDate() + 1)) {
+        const dd = ("0" + d.getDate()).slice(-2);
+        const mm = ("0" + (d.getMonth() + 1)).slice(-2);
+        const formatted = `${dd}/${mm}/${d.getFullYear()}`;
+        const weekday = d.toLocaleDateString(undefined, { weekday: 'long' });
+        globalMonthDays.push({ date: formatted, weekday: weekday });
+      }
+      document.getElementById("calendarHeader").textContent =
+         `21. ${monthNames[periodStart.getMonth()]} ${periodStart.getFullYear()} - 20. ${monthNames[periodEnd.getMonth()]} ${periodEnd.getFullYear()}`;
+      buildAvailabilityUI();
+      saveData();
+    }
+
+    function buildAvailabilityUI() {
+      const container = document.getElementById("availabilityConstraints");
+      container.innerHTML = "";
+      persons.forEach(person => {
+        availabilityConstraints[person] = [];
+        const div = document.createElement("div");
+        div.className = "availability-person";
+        const h3 = document.createElement("h3");
+        h3.textContent = person;
+        h3.style.backgroundColor = personColors[person] || "#fff";
+        div.appendChild(h3);
+        const label = document.createElement("label");
+        label.style.display = "block";
+        const chk = document.createElement("input");
+        chk.type = "checkbox";
+        chk.id = `monthOff_${person}`;
+        label.appendChild(chk);
+        label.appendChild(document.createTextNode(" Unavailable Entire Period"));
+        div.appendChild(label);
+        const indivDiv = document.createElement("div");
+        indivDiv.id = `individual_availability_${person}`;
+        indivDiv.appendChild(createDateDropdown());
+        div.appendChild(indivDiv);
+        const addDateBtn = document.createElement("button");
+        addDateBtn.textContent = "Add Date";
+        addDateBtn.className = "no-print";
+        addDateBtn.onclick = () => { indivDiv.appendChild(createDateDropdown()); };
+        div.appendChild(addDateBtn);
+        const weekDiv = document.createElement("div");
+        weekDiv.id = `week_off_${person}`;
+        div.appendChild(weekDiv);
+        const addWeekBtn = document.createElement("button");
+        addWeekBtn.textContent = "Add Week Off";
+        addWeekBtn.className = "no-print";
+        addWeekBtn.onclick = () => { weekDiv.appendChild(createWeekDropdown()); };
+        div.appendChild(addWeekBtn);
+        container.appendChild(div);
+        function createDateDropdown() {
+          const sel = document.createElement("select");
+          sel.className = "availability-entry";
+          const defOpt = document.createElement("option");
+          defOpt.value = "";
+          defOpt.textContent = "Select Date";
+          sel.appendChild(defOpt);
+          globalMonthDays.forEach(md => {
+            const opt = document.createElement("option");
+            opt.value = md.date;
+            opt.textContent = `${md.date} (${md.weekday})`;
+            sel.appendChild(opt);
+          });
+          return sel;
+        }
+        function createWeekDropdown() {
+          const sel = document.createElement("select");
+          sel.className = "availability-entry";
+          const defOpt = document.createElement("option");
+          defOpt.value = "";
+          defOpt.textContent = "Select Week Off";
+          sel.appendChild(defOpt);
+          let groups = [];
+          let currentGroup = [];
+          globalMonthDays.forEach((md, idx) => {
+            if (idx === 0) { currentGroup.push(md); }
+            else {
+              if (md.weekday === "Monday") {
+                groups.push(currentGroup);
+                currentGroup = [md];
+              } else {
+                currentGroup.push(md);
+              }
+            }
+          });
+          if (currentGroup.length > 0) groups.push(currentGroup);
+          groups.forEach(g => {
+            const label = `Week: ${g[0].date} - ${g[g.length - 1].date}`;
+            const opt = document.createElement("option");
+            opt.value = label;
+            opt.textContent = label;
+            sel.appendChild(opt);
+          });
+          return sel;
+        }
+      });
+      saveData();
+    }
+
+    function readAvailabilityConstraints() {
+      let constraints = {};
+      persons.forEach(person => {
+        constraints[person] = [];
+        const chk = document.getElementById(`monthOff_${person}`);
+        if (chk && chk.checked) {
+          globalMonthDays.forEach(d => constraints[person].push(d.date));
+        }
+        const selDates = document.querySelectorAll(`#individual_availability_${person} select`);
+        selDates.forEach(s => { if (s.value !== "") constraints[person].push(s.value); });
+        const selWeeks = document.querySelectorAll(`#week_off_${person} select`);
+        selWeeks.forEach(sw => {
+          if (sw.value !== "") {
+            let range = sw.value.replace("Week: ", "").split(" - ");
+            if (range.length === 2) {
+              let start = range[0], end = range[1];
+              let [sd, sm, sy] = start.split("/").map(n => parseInt(n, 10));
+              let [ed, em, ey] = end.split("/").map(n => parseInt(n, 10));
+              let startDate = new Date(sy, sm - 1, sd);
+              let endDate = new Date(ey, em - 1, ed);
+              globalMonthDays.forEach(md => {
+                let [dd, mm, yyyy] = md.date.split("/").map(n => parseInt(n, 10));
+                let dObj = new Date(yyyy, mm - 1, dd);
+                if (dObj >= startDate && dObj <= endDate) {
+                  constraints[person].push(md.date);
+                }
+              });
+            }
+          }
+        });
+      });
+      return constraints;
+    }
+
+    // Modified generateSchedule: when assigning shifts, if a candidate has a numeric target and the next shift would exceed that target, skip that candidate.
+    function generateSchedule() {
+      resetPersonStats();
+      if (globalMonthDays.length === 0) {
+        alert("Please select a time period first.");
+        return;
+      }
+      const constraints = readAvailabilityConstraints();
+      let schedule = {};
+      globalMonthDays.forEach(md => {
+        schedule[md.date] = [];
+        let available = persons.filter(p => !constraints[p].includes(md.date));
+        for (let shiftIndex = 0; shiftIndex < 3; shiftIndex++) {
+          let used = schedule[md.date];
+          // Initial eligibility check using existing rules
+          let eligible = available.filter(p => !used.includes(p) && isEligible(p, shiftIndex, md.date));
+          // NEW: Filter out a candidate if they have a defined target and the assignment would push them over
+          eligible = eligible.filter(p => {
+            if (targetHours[p] !== undefined) {
+              return (personStats[p].hours + SHIFT_HOURS[shiftIndex]) <= targetHours[p];
+            }
+            return true;
+          });
+          if (eligible.length < 1) {
+            schedule[md.date].push("N/A");
+            continue;
+          }
+          eligible.sort((a, b) => personStats[a].hours - personStats[b].hours);
+          const chosen = eligible[0];
+          schedule[md.date].push(chosen);
+          personStats[chosen].total++;
+          if (shiftIndex === 0) {
+            personStats[chosen].day++;
+            personStats[chosen].hours += SHIFT_HOURS[0];
+          } else if (shiftIndex === 1) {
+            personStats[chosen].evening++;
+            personStats[chosen].hours += SHIFT_HOURS[1];
+          } else if (shiftIndex === 2) {
+            personStats[chosen].night++;
+            personStats[chosen].hours += SHIFT_HOURS[2];
+          }
+          let [dd, mm, yyyy] = md.date.split("/").map(n => parseInt(n, 10));
+          let dObj = new Date(yyyy, mm - 1, dd);
+          if (dObj.getDay() === 0 || dObj.getDay() === 6) {
+            personStats[chosen].weekend++;
+          }
+          if (chosen === "Sonija") {
+            if (dObj.getDay() >= 1 && dObj.getDay() <= 5) {
+              let week = getWeekNumber(dObj);
+              sonijaWeekdayAssignments[week] = (sonijaWeekdayAssignments[week] || 0) + 1;
+            } else {
+              let firstWeekend;
+              for (let md of globalMonthDays) {
+                let [dDay, dMon, dYr] = md.date.split("/").map(n => parseInt(n, 10));
+                let dt = new Date(dYr, dMon - 1, dDay);
+                if (dt.getDay() === 0 || dt.getDay() === 6) {
+                  firstWeekend = dt;
+                  break;
+                }
+              }
+              if (!firstWeekend) return false;
+              let weekendIndex = Math.floor((dObj - firstWeekend) / (7 * 86400000));
+              if (weekendIndex % 2 !== 0) return false;
+              let key = getWeekendKey(dObj);
+              if ((sonijaWeekendAssignments[key] || 0) >= 2) return false;
+            }
+          }
+        }
+      });
+      globalSchedule = schedule;
+      displayCalendar();
+      updateSummary();
+      saveData();
+    }
+
+    function isEligible(person, shiftIndex, dateStr) {
+      let [dd, mm, yyyy] = dateStr.split("/").map(n => parseInt(n, 10));
+      let d = new Date(yyyy, mm - 1, dd);
+      
+      if (person === "Jóhanna" && shiftIndex !== 2) return false;
+      if (person === "Sangeet" && shiftIndex !== 2) return false;
+      if ((person === "Guðrún" || person === "Lillibeth") && personStats[person].hours >= 109) return false;
+      if ((person === "Jóna" || person === "Lucybell") && personStats[person].hours >= 62) return false;
+      if (person === "Sangeet" && shiftIndex === 2 && personStats[person].night >= 6) return false;
+      
+      if (person === "Sonija" && personStats[person].total >= 8) return false;
+      
+      if (person === "Sonija") {
+        if (d.getDay() >= 1 && d.getDay() <= 5) {
+          let week = getWeekNumber(d);
+          if ((sonijaWeekdayAssignments[week] || 0) >= 1) return false;
+        } else {
+          let firstWeekend;
+          for (let md of globalMonthDays) {
+            let [dDay, dMon, dYr] = md.date.split("/").map(n => parseInt(n, 10));
+            let dt = new Date(dYr, dMon - 1, dDay);
+            if (dt.getDay() === 0 || dt.getDay() === 6) {
+              firstWeekend = dt;
+              break;
+            }
+          }
+          if (!firstWeekend) return false;
+          let weekendIndex = Math.floor((d - firstWeekend) / (7 * 86400000));
+          if (weekendIndex % 2 !== 0) return false;
+          let key = getWeekendKey(d);
+          if ((sonijaWeekendAssignments[key] || 0) >= 2) return false;
+        }
+      }
+      return true;
+    }
+
+    function displayCalendar() {
+      const calendarBody = document.getElementById("calendarBody");
+      calendarBody.innerHTML = "";
+      if (globalMonthDays.length === 0) return;
+      let [sd, sm, sy] = globalMonthDays[0].date.split("/").map(n => parseInt(n, 10));
+      let firstDate = new Date(sy, sm - 1, sd);
+      let dayOfWeek = firstDate.getDay();
+      if (dayOfWeek === 0) dayOfWeek = 7;
+      let startCol = dayOfWeek;
+      let totalDays = globalMonthDays.length;
+      let cellIndex = 0;
+      for (let r = 0; r < 6; r++) {
+        let row = document.createElement("tr");
+        for (let c = 1; c <= 7; c++) {
+          let cell = document.createElement("td");
+          if (r === 0 && c < startCol) {
+            // Empty cell
+          } else if (cellIndex < totalDays) {
+            let md = globalMonthDays[cellIndex++];
+            cell.dataset.date = md.date;
+            let dayNum = parseInt(md.date.slice(0, 2), 10);
+            let dayDiv = document.createElement("div");
+            dayDiv.className = "calendarDay";
+            dayDiv.textContent = dayNum;
+            cell.appendChild(dayDiv);
+            let assigned = globalSchedule[md.date] || ["N/A", "N/A", "N/A"];
+            for (let s = 0; s < 3; s++) {
+              let shiftLine = document.createElement("div");
+              shiftLine.className = "shiftLine";
+              let labelSpan = document.createElement("span");
+              labelSpan.className = "shiftLabel";
+              labelSpan.textContent = SHIFT_LABELS[s] + ":";
+              shiftLine.appendChild(labelSpan);
+              let select = document.createElement("select");
+              select.className = "personSelect";
+              let usedOthers = assigned.filter((v, idx) => idx !== s);
+              let isWeekend = (md.weekday === "Saturday" || md.weekday === "Sunday");
+              let eligible = [];
+              if (assigned[s] === "N/A") {
+                eligible = persons.slice();
+              } else {
+                eligible = persons.slice().filter(p => !usedOthers.includes(p) && isEligible(p, s, md.date));
+                if (!eligible.includes(assigned[s])) {
+                  eligible.push(assigned[s]);
+                }
+              }
+              eligible.sort((a, b) => personStats[a].hours - personStats[b].hours);
+              eligible.forEach(p => {
+                let opt = document.createElement("option");
+                opt.value = p;
+                opt.textContent = p;
+                select.appendChild(opt);
+              });
+              if (eligible.length === 0) {
+                select.innerHTML = "<option value='N/A'>N/A</option>";
+              }
+              select.value = assigned[s];
+              updateSelectColor(select);
+              select.onchange = function() { updateSelectColor(this); };
+              shiftLine.appendChild(select);
+              cell.appendChild(shiftLine);
+              let commentContainer = document.createElement("div");
+              commentContainer.className = "commentContainer";
+              let commentInput = document.createElement("textarea");
+              commentInput.rows = 2;
+              commentInput.placeholder = "Add comment";
+              commentInput.className = "commentInput";
+              commentInput.style.whiteSpace = "pre-wrap";
+              commentInput.oninput = function() {
+                this.style.height = 'auto';
+                this.style.height = this.scrollHeight + 'px';
+              };
+              commentInput.dataset.date = md.date;
+              commentInput.dataset.shiftIndex = s.toString();
+              commentContainer.appendChild(commentInput);
+              cell.appendChild(commentContainer);
+            }
+          }
+          row.appendChild(cell);
+        }
+        calendarBody.appendChild(row);
+      }
+    }
+
+    function sortDropdown(a, b, shiftIndex, isWeekend, usedThatDay) {
+      let aUsed = usedThatDay.includes(a) ? 1 : 0;
+      let bUsed = usedThatDay.includes(b) ? 1 : 0;
+      if (aUsed !== bUsed) return aUsed - bUsed;
+      if (isWeekend && personStats[a].weekend !== personStats[b].weekend) {
+        return personStats[a].weekend - personStats[b].weekend;
+      }
+      let aShift, bShift;
+      if (shiftIndex === 0) { aShift = personStats[a].day; bShift = personStats[b].day; }
+      else if (shiftIndex === 1) { aShift = personStats[a].evening; bShift = personStats[b].evening; }
+      else { aShift = personStats[a].night; bShift = personStats[b].night; }
+      if (aShift !== bShift) return aShift - bShift;
+      return personStats[a].total - personStats[b].total;
+    }
+
+    function updateSelectColor(select) {
+      let val = select.value;
+      select.style.backgroundColor = personColors[val] || "";
+    }
+
+    // Update Summary Table – includes new columns for Work % and Target Work
+    function updateSummary() {
+      const summaryBody = document.getElementById("summaryBody");
+      summaryBody.innerHTML = "";
+      let grand = { total: 0, day: 0, evening: 0, night: 0, weekend: 0, hours: 0 };
+      persons.forEach(p => {
+        let row = document.createElement("tr");
+        let nameTd = document.createElement("td");
+        nameTd.textContent = p;
+        nameTd.style.backgroundColor = personColors[p] || "#fff";
+        nameTd.style.fontWeight = "bold";
+        row.appendChild(nameTd);
+        let totTd = document.createElement("td");
+        totTd.textContent = personStats[p].total;
+        row.appendChild(totTd);
+        let nTd = document.createElement("td");
+        nTd.textContent = personStats[p].night;
+        row.appendChild(nTd);
+        let dTd = document.createElement("td");
+        dTd.textContent = personStats[p].day;
+        row.appendChild(dTd);
+        let eTd = document.createElement("td");
+        eTd.textContent = personStats[p].evening;
+        row.appendChild(eTd);
+        let wTd = document.createElement("td");
+        wTd.textContent = personStats[p].weekend;
+        row.appendChild(wTd);
+        let hTd = document.createElement("td");
+        hTd.textContent = personStats[p].hours;
+        row.appendChild(hTd);
+        let percentTd = document.createElement("td");
+        let percent = (personStats[p].hours / FULL_WORK_HOURS) * 100;
+        percentTd.textContent = percent.toFixed(1) + "%";
+        row.appendChild(percentTd);
+        let targetTd = document.createElement("td");
+        targetTd.textContent = targetWork[p] || "";
+        row.appendChild(targetTd);
+        summaryBody.appendChild(row);
+        grand.total += personStats[p].total;
+        grand.day += personStats[p].day;
+        grand.evening += personStats[p].evening;
+        grand.night += personStats[p].night;
+        grand.weekend += personStats[p].weekend;
+        grand.hours += personStats[p].hours;
+      });
+      let totalRow = document.createElement("tr");
+      let lblTd = document.createElement("td");
+      lblTd.textContent = "Total Shifts / Hours for the Period";
+      lblTd.style.fontWeight = "bold";
+      totalRow.appendChild(lblTd);
+      let totTd = document.createElement("td");
+      totTd.textContent = grand.total;
+      totalRow.appendChild(totTd);
+      let nTd = document.createElement("td");
+      nTd.textContent = grand.night;
+      totalRow.appendChild(nTd);
+      let dTd = document.createElement("td");
+      dTd.textContent = grand.day;
+      totalRow.appendChild(dTd);
+      let eTd = document.createElement("td");
+      eTd.textContent = grand.evening;
+      totalRow.appendChild(eTd);
+      let wTd = document.createElement("td");
+      wTd.textContent = grand.weekend;
+      totalRow.appendChild(wTd);
+      let hTd = document.createElement("td");
+      hTd.textContent = grand.hours;
+      totalRow.appendChild(hTd);
+      let blankPercentTd = document.createElement("td");
+      blankPercentTd.textContent = "";
+      totalRow.appendChild(blankPercentTd);
+      let blankTargetTd = document.createElement("td");
+      blankTargetTd.textContent = "";
+      totalRow.appendChild(blankTargetTd);
+      totalRow.style.fontWeight = "bold";
+      totalRow.style.backgroundColor = "#ddd";
+      summaryBody.appendChild(totalRow);
+    }
+
+    function updateSummaryFromCalendar() {
+      persons.forEach(p => {
+        personStats[p] = { total: 0, day: 0, evening: 0, night: 0, weekend: 0, hours: 0 };
+      });
+      const cells = document.querySelectorAll("#calendarTable tbody td[data-date]");
+      cells.forEach(cell => {
+        let dateStr = cell.dataset.date;
+        let parts = dateStr.split("/");
+        let d = new Date(parseInt(parts[2],10), parseInt(parts[1],10)-1, parseInt(parts[0],10));
+        let isWeekend = (d.getDay() === 0 || d.getDay() === 6);
+        let selects = cell.querySelectorAll("select.personSelect");
+        selects.forEach((sel, index) => {
+          let person = sel.value;
+          if (person && person !== "N/A") {
+            personStats[person].total++;
+            if (index === 0) {
+              personStats[person].day++;
+              personStats[person].hours += SHIFT_HOURS[0];
+            } else if (index === 1) {
+              personStats[person].evening++;
+              personStats[person].hours += SHIFT_HOURS[1];
+            } else if (index === 2) {
+              personStats[person].night++;
+              personStats[person].hours += SHIFT_HOURS[2];
+            }
+            if (isWeekend) personStats[person].weekend++;
+          }
+        });
+      });
+      updateSummary();
+      saveData();
+    }
+
+    function convertHexToARGB(hexColor) {
+      const hex = hexColor.replace("#", "").toUpperCase();
+      return "FF" + hex;
+    }
+
+    async function exportToExcel() {
+      if (globalMonthDays.length === 0) {
+        alert("No schedule data to export. Please generate the schedule first.");
+        return;
+      }
+      let workbook = new ExcelJS.Workbook();
+
+      // Shift Calendar worksheet
+      let calendarSheet = workbook.addWorksheet("Shift Calendar");
+      let timePeriodText = document.getElementById("calendarHeader").textContent;
+      let periodHeaderRow = calendarSheet.addRow([timePeriodText]);
+      calendarSheet.mergeCells("A1:G1");
+      periodHeaderRow.font = { bold: true, size: 14 };
+      periodHeaderRow.alignment = { horizontal: "center" };
+
+      let daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+      let headerRow = calendarSheet.addRow(daysOfWeek);
+      headerRow.font = { bold: true, size: 12 };
+      headerRow.eachCell(cell => {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF538DD5' }
+        };
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+      });
+      calendarSheet.columns.forEach(col => {
+        col.width = 22;
+      });
+
+      let firstDateStr = globalMonthDays[0].date;
+      let [fd, fm, fy] = firstDateStr.split("/").map(n => parseInt(n, 10));
+      let firstDate = new Date(fy, fm - 1, fd);
+      let dow = firstDate.getDay();
+      if (dow === 0) dow = 7;
+      let startCol = dow;
+      let cellIndex = 0;
+      let totalDays = globalMonthDays.length;
+      const SHIFT_TIMES = ["09:00–16:00", "16:00–22:00", "22:00–09:00"];
+
+      for (let r = 0; r < 6; r++) {
+        let rowCells = new Array(7).fill("");
+        for (let c = 0; c < 7; c++) {
+          if (r === 0 && c < (startCol - 1)) {
+            rowCells[c] = "";
+          } else if (cellIndex < totalDays) {
+            let md = globalMonthDays[cellIndex++];
+            let dayNumber = parseInt(md.date.slice(0, 2), 10);
+            let shifts = globalSchedule[md.date] || ["N/A", "N/A", "N/A"];
+            let cellRichText = [];
+            cellRichText.push({
+              text: dayNumber + "\n",
+              font: { bold: true, size: 14 }
+            });
+            for (let s = 0; s < 3; s++) {
+              let person = shifts[s];
+              let timeRange = SHIFT_TIMES[s];
+              if (person === "N/A") {
+                cellRichText.push({
+                  text: timeRange + " - N/A\n",
+                  font: { size: 12, color: { argb: "FF000000" } }
+                });
+              } else {
+                cellRichText.push({
+                  text: timeRange + " - ",
+                  font: { size: 12, color: { argb: "FF000000" } }
+                });
+                let hex = personColors[person] || "#000000";
+                cellRichText.push({
+                  text: person + "\n",
+                  font: { bold: true, size: 12, color: { argb: convertHexToARGB(hex) } }
+                });
+              }
+            }
+            rowCells[c] = { richText: cellRichText };
+          } else {
+            rowCells[c] = "";
+          }
+        }
+        let newRow = calendarSheet.addRow(rowCells);
+        newRow.eachCell(cell => {
+          cell.alignment = { wrapText: true, vertical: "top" };
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FF538DD5' }
+          };
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+          };
+        });
+      }
+
+      // Shift Summary worksheet with Target Work column
+      let summarySheet = workbook.addWorksheet("Shift Summary");
+      let summaryHeader = summarySheet.addRow([
+        "Team Member", "Total Shifts", "Night Shifts", "Day Shifts", 
+        "Evening Shifts", "Weekend Shifts", "Total Hours", "Work %", "Target Work"
+      ]);
+      summaryHeader.font = { bold: true, size: 12 };
+      summarySheet.columns = [
+        { width: 18 },
+        { width: 15 },
+        { width: 15 },
+        { width: 15 },
+        { width: 15 },
+        { width: 15 },
+        { width: 15 },
+        { width: 12 },
+        { width: 20 }
+      ];
+      persons.forEach(p => {
+        let stats = personStats[p];
+        let workPercent = ((stats.hours / FULL_WORK_HOURS) * 100).toFixed(1) + "%";
+        let row = summarySheet.addRow([
+          p, stats.total, stats.night, stats.day, stats.evening, stats.weekend, stats.hours, workPercent, targetWork[p] || ""
+        ]);
+        let nameCell = row.getCell(1);
+        nameCell.font = { bold: true, size: 12 };
+        nameCell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: convertHexToARGB(personColors[p] || "#ffffff") }
+        };
+      });
+
+      try {
+        let buffer = await workbook.xlsx.writeBuffer();
+        let blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+        let url = URL.createObjectURL(blob);
+        let a = document.createElement("a");
+        a.href = url;
+        a.download = "Shift_Calendar.xlsx";
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error("Error exporting to Excel:", err);
+        alert("Error exporting to Excel: " + err.message);
+      }
+    }
+
+    window.addEventListener("beforeprint", function() {
+      document.querySelectorAll(".commentInput").forEach(input => {
+        if (!input.value.trim()) {
+          input.parentElement.classList.add("empty");
+        }
+      });
+    });
+    window.addEventListener("afterprint", function() {
+      document.querySelectorAll(".commentInput").forEach(input => {
+        input.parentElement.classList.remove("empty");
+      });
+    });
+
+    function updateSummaryFromCalendar() {
+      persons.forEach(p => {
+        personStats[p] = { total: 0, day: 0, evening: 0, night: 0, weekend: 0, hours: 0 };
+      });
+      const cells = document.querySelectorAll("#calendarTable tbody td[data-date]");
+      cells.forEach(cell => {
+        let dateStr = cell.dataset.date;
+        let parts = dateStr.split("/");
+        let d = new Date(parseInt(parts[2],10), parseInt(parts[1],10)-1, parseInt(parts[0],10));
+        let isWeekend = (d.getDay() === 0 || d.getDay() === 6);
+        let selects = cell.querySelectorAll("select.personSelect");
+        selects.forEach((sel, index) => {
+          let person = sel.value;
+          if (person && person !== "N/A") {
+            personStats[person].total++;
+            if (index === 0) {
+              personStats[person].day++;
+              personStats[person].hours += SHIFT_HOURS[0];
+            } else if (index === 1) {
+              personStats[person].evening++;
+              personStats[person].hours += SHIFT_HOURS[1];
+            } else if (index === 2) {
+              personStats[person].night++;
+              personStats[person].hours += SHIFT_HOURS[2];
+            }
+            if (isWeekend) personStats[person].weekend++;
+          }
+        });
+      });
+      updateSummary();
+      saveData();
+    }
+  </script>
+</body>
+</html>

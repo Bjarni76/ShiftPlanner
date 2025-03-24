@@ -299,7 +299,7 @@
       "Sonija": "#F5B7B1",
       "Jóhanna": "#F9E79F"
     };
-    // Target work information (for display) and numeric target hours (for scheduling) 
+    // Target work display and numeric targets (for those we want to limit)
     const targetWork = {
       "Guðrún": "70% (109 Hours)",
       "Lillibeth": "70% (109 Hours)",
@@ -315,7 +315,7 @@
       "Lillibeth": 109,
       "Jóna": 62,
       "Lena": 62
-      // For Lucybell, Sangeet, Sonija, and Jóhanna, we leave the target undefined so other eligibility rules apply.
+      // For Lucybell, Sangeet, Sonija, and Jóhanna no numeric target is enforced.
     };
     const monthNames = ["Januar","Februar","Mars","April","Mai","Juni","Juli","August","September","Oktober","November","Desember"];
 
@@ -529,7 +529,7 @@
       return constraints;
     }
 
-    // Modified generateSchedule: when assigning shifts, if a candidate has a numeric target and the next shift would exceed that target, skip that candidate.
+    // In generateSchedule, we now also check each candidate against their numeric target.
     function generateSchedule() {
       resetPersonStats();
       if (globalMonthDays.length === 0) {
@@ -543,9 +543,8 @@
         let available = persons.filter(p => !constraints[p].includes(md.date));
         for (let shiftIndex = 0; shiftIndex < 3; shiftIndex++) {
           let used = schedule[md.date];
-          // Initial eligibility check using existing rules
           let eligible = available.filter(p => !used.includes(p) && isEligible(p, shiftIndex, md.date));
-          // NEW: Filter out a candidate if they have a defined target and the assignment would push them over
+          // Filter out candidates if assigning this shift would exceed their numeric target.
           eligible = eligible.filter(p => {
             if (targetHours[p] !== undefined) {
               return (personStats[p].hours + SHIFT_HOURS[shiftIndex]) <= targetHours[p];
@@ -613,7 +612,6 @@
       if ((person === "Guðrún" || person === "Lillibeth") && personStats[person].hours >= 109) return false;
       if ((person === "Jóna" || person === "Lucybell") && personStats[person].hours >= 62) return false;
       if (person === "Sangeet" && shiftIndex === 2 && personStats[person].night >= 6) return false;
-      
       if (person === "Sonija" && personStats[person].total >= 8) return false;
       
       if (person === "Sonija") {
@@ -675,6 +673,13 @@
               shiftLine.appendChild(labelSpan);
               let select = document.createElement("select");
               select.className = "personSelect";
+              // Always include an "Empty" option
+              select.innerHTML = "";
+              let emptyOption = document.createElement("option");
+              emptyOption.value = "N/A";
+              emptyOption.textContent = "Empty";
+              select.appendChild(emptyOption);
+              
               let usedOthers = assigned.filter((v, idx) => idx !== s);
               let isWeekend = (md.weekday === "Saturday" || md.weekday === "Sunday");
               let eligible = [];
@@ -693,9 +698,7 @@
                 opt.textContent = p;
                 select.appendChild(opt);
               });
-              if (eligible.length === 0) {
-                select.innerHTML = "<option value='N/A'>N/A</option>";
-              }
+              // Set current value
               select.value = assigned[s];
               updateSelectColor(select);
               select.onchange = function() { updateSelectColor(this); };
@@ -744,7 +747,7 @@
       select.style.backgroundColor = personColors[val] || "";
     }
 
-    // Update Summary Table – includes new columns for Work % and Target Work
+    // In updateSummary, after computing Work %, if the person has a numeric target and their hours exceed it, we highlight the cell.
     function updateSummary() {
       const summaryBody = document.getElementById("summaryBody");
       summaryBody.innerHTML = "";
@@ -777,6 +780,10 @@
         let percentTd = document.createElement("td");
         let percent = (personStats[p].hours / FULL_WORK_HOURS) * 100;
         percentTd.textContent = percent.toFixed(1) + "%";
+        // Highlight if assigned hours exceed the numeric target
+        if (targetHours[p] !== undefined && personStats[p].hours > targetHours[p]) {
+          percentTd.style.backgroundColor = "#ffcccc";
+        }
         row.appendChild(percentTd);
         let targetTd = document.createElement("td");
         targetTd.textContent = targetWork[p] || "";
